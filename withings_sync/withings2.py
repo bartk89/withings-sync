@@ -1,4 +1,5 @@
 """This module takes care of the communication with Withings."""
+
 from datetime import date, datetime
 import logging
 import json
@@ -63,11 +64,13 @@ class WithingsOAuth2:
             if os.path.exists(app_config_path):
                 log.info(f"Using app config from: {app_config_path}")
             else:
-                log.warning(f"App config not found at {app_config_path}, falling back to WITHINGS_APP env var or default")
+                log.warning(
+                    f"App config not found at {app_config_path}, falling back to WITHINGS_APP env var or default"
+                )
                 app_config_path = os.environ.get("WITHINGS_APP", APP_CONFIG)
         else:
             app_config_path = os.environ.get("WITHINGS_APP", APP_CONFIG)
-        
+
         log.info(f"Loading app config from: {app_config_path}")
         app_cfg = WithingsConfig(app_config_path)
         self.app_config = app_cfg.config
@@ -79,30 +82,31 @@ class WithingsOAuth2:
             # The directory will be created when needed
         else:
             user_config_path = USER_CONFIG
-        
+
         self.user_cfg = WithingsConfig(user_config_path)
         self.user_config = self.user_cfg.config
-        
+
         if config_folder and not os.path.exists(user_config_path):
             legacy_path = HOME + "/.withings_user.json"
             if os.path.exists(legacy_path):
                 log.info(f"Using new config folder: {user_config_path}")
-                log.info(f"If you want to use existing credentials, copy from: {legacy_path}")
+                log.info(
+                    f"If you want to use existing credentials, copy from: {legacy_path}"
+                )
 
         if not self.user_config.get("access_token"):
             if not self.user_config.get("authentification_code"):
-                self.user_config[
-                    "authentification_code"
-                ] = self.get_authenticationcode()
+                self.user_config["authentification_code"] = (
+                    self.get_authenticationcode()
+                )
             try:
                 self.get_accesstoken()
             except Exception as e:
                 log.warning("Could not get access-token. Trying to renew auth_code")
-                self.user_config[
-                    "authentification_code"
-                ] = self.get_authenticationcode()
+                self.user_config["authentification_code"] = (
+                    self.get_authenticationcode()
+                )
                 self.get_accesstoken()
-
 
         self.refresh_accesstoken()
 
@@ -493,7 +497,10 @@ class WithingsMeasure:
         TYPE_QRS_INTERVAL: ["QRS interval duration based on ECG signal", "ms"],
         TYPE_PR_INTERVAL: ["PR interval duration based on ECG signal", "ms"],
         TYPE_QT_INTERVAL: ["QT interval duration based on ECG signal", "ms"],
-        TYPE_CORRECTED_QT_INTERVAL: ["Corrected QT interval duration based on ECG signal", "ms"],
+        TYPE_CORRECTED_QT_INTERVAL: [
+            "Corrected QT interval duration based on ECG signal",
+            "ms",
+        ],
         TYPE_ATRIAL_FIBRILLATION_PPG: ["Atrial fibrillation result from PPG", "ms"],
         TYPE_FAT_MASS_SEGMENTS: ["Fat Mass for segments in mass unit", "kg"],
         TYPE_EXTRACELLULAR_WATER: ["Extracellular Water", "kg"],
@@ -507,7 +514,10 @@ class WithingsMeasure:
         TYPE_NERVE_HEALTH_FEET: ["Nerve Health Score feet", ""],
         TYPE_ELECTRODERMAL_ACTIVITY_FEET: ["Electrodermal activity feet", ""],
         TYPE_ELECTRODERMAL_ACTIVITY_LEFT_FOOT: ["Electrodermal activity left foot", ""],
-        TYPE_ELECTRODERMAL_ACTIVITY_RIGHT_FOOT: ["Electrodermal activity right foot", ""],
+        TYPE_ELECTRODERMAL_ACTIVITY_RIGHT_FOOT: [
+            "Electrodermal activity right foot",
+            "",
+        ],
     }
 
     def __init__(self, measure):
@@ -522,7 +532,12 @@ class WithingsMeasure:
         return f"{self.type_s}: {self.get_value()} {self.unit_s}"
 
     def json_dict(self):
-        return { f"{self.type_s.replace(' ','_')}": { "Value": round(self.get_value(), 2), "Unit": f'{self.unit_s}'}}
+        return {
+            f"{self.type_s.replace(' ','_')}": {
+                "Value": round(self.get_value(), 2),
+                "Unit": f"{self.unit_s}",
+            }
+        }
 
     def get_value(self):
         """get value"""

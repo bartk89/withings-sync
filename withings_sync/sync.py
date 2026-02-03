@@ -151,8 +151,15 @@ def get_args():
     )
 
     log_level_group = parser.add_mutually_exclusive_group()
-    log_level_group.add_argument("--verbose", "-v", action="store_true", help="Run verbosely.")
-    log_level_group.add_argument("--silent", "-s", action="store_true", help="Run silently (suppress INFO messages).")
+    log_level_group.add_argument(
+        "--verbose", "-v", action="store_true", help="Run verbosely."
+    )
+    log_level_group.add_argument(
+        "--silent",
+        "-s",
+        action="store_true",
+        help="Run silently (suppress INFO messages).",
+    )
 
     parser.add_argument(
         "--dump-raw",
@@ -419,11 +426,18 @@ def prepare_syncdata(height, groups):
         group_data = sync_dict[dt]
         # Skip empty or non-whitelisted groups (those that never collected a valid type)
         if not group_data or "type" not in group_data or group_data["type"] == "None":
-            logging.debug("skipping data with timestamp: %s, type: %s", dt, group_data.get("type") if group_data else "empty")
+            logging.debug(
+                "skipping data with timestamp: %s, type: %s",
+                dt,
+                group_data.get("type") if group_data else "empty",
+            )
             if group_data:
                 # Log the group_data as JSON (excluding raw_data objects)
                 debug_data = {k: v for k, v in group_data.items() if k != "raw_data"}
-                logging.debug("skipped record details: %s", json.dumps(debug_data, indent=2, default=str))
+                logging.debug(
+                    "skipped record details: %s",
+                    json.dumps(debug_data, indent=2, default=str),
+                )
             continue
         syncdata.append(group_data)
         logging.debug("Processed data: ")
@@ -453,7 +467,11 @@ def groupdata_log_raw_data(groupdata):
                 getattr(dataentry, "unit_s", None),
                 getattr(dataentry, "unit", None),
                 getattr(dataentry, "value", None),
-                round(dataentry.get_value(), 6) if hasattr(dataentry, "get_value") else None,
+                (
+                    round(dataentry.get_value(), 6)
+                    if hasattr(dataentry, "get_value")
+                    else None
+                ),
             )
         except Exception as e:
             logging.debug("  -> failed to print detailed entry: %s", e)
