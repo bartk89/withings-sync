@@ -3,11 +3,11 @@
 > These changes were made to enhance security and compatibility but may require modifications to your existing setup.
 >
 > - The container now runs without root privileges.
-> - Dependencies, virtual envs, packaging is now done by Poetry.
+> - Dependencies, virtual envs, packaging is now done by [uv](https://docs.astral.sh/uv/).
 > - This fork requires a recent version of Python, currently capped at >= python 3.12.
 >
 > Make sure to go over the updated readme and test these new changes thoroughly for your environment.
-> Chances are quite high you will have to make changes to make this work again. 
+> Chances are quite high you will have to make changes to make this work again.
 
 # withings-sync
 
@@ -16,6 +16,26 @@ A tool for synchronisation of the Withings API to:
 - Garmin Connect
 - Trainer Road
 - raw JSON output
+
+## 0. Documentation
+
+Additional documentation is available in the [`docs/`](docs/) folder:
+
+| Document | Description |
+|----------|-------------|
+| [REPORT.md](docs/report/REPORT.md) | Migration report - Poetry to uv migration details, technical changes, and metrics |
+| [REPORT.pl.md](docs/report/REPORT.pl.md) | Migration report (Polish) |
+| [README.pl.md](README.pl.md) | Polish Windows setup guide with step-by-step instructions |
+
+### Session Logs
+
+Development session logs are preserved in [`docs/worklog/`](docs/worklog/):
+
+| File | Description |
+|------|-------------|
+| [2026-02-03-001.txt](docs/worklog/2026-02-03-001.txt) | Research & planning - uv analysis, Poetry comparison, migration design |
+| [2026-02-03-002.txt](docs/worklog/2026-02-03-002.txt) | Implementation - executing migration plan, file changes, testing |
+| [2026-02-03-003.txt](docs/worklog/2026-02-03-003.txt) | Finalization - log sanitization, documentation updates |
 
 ## 1. Installation Instructions
 ### 1.1 Installation of withings-sync with pip
@@ -53,7 +73,7 @@ A tool for synchronisation of the Withings API to:
   ```
   You need to visit the URL listed by the script and then - copy Authentification Code back to the prompt.
 
-  This is one-time activity and it will not be needed to repeat. 
+  This is one-time activity and it will not be needed to repeat.
 
   <ins>3. running the application:</ins>
 
@@ -89,9 +109,9 @@ A tool for synchronisation of the Withings API to:
   GARMIN_USERNAME="your.name@domain.ext"
   GARMIN_PASSWORD="YourPasswordHere"
   ```
- 
+
   <ins>3. contents of an example `docker-compose.yml` file (simplified with --config-folder):</ins>
- 
+
   ```yaml
   services:
     withings-sync:
@@ -116,7 +136,7 @@ A tool for synchronisation of the Withings API to:
   - Easier backup and migration of configuration
 
   <ins>4. obtaining Withings authorization:</ins>
- 
+
   ```bash
   $ docker compose pull
   [+] Pulling 13/13
@@ -177,7 +197,7 @@ A tool for synchronisation of the Withings API to:
   ```
 
   <ins>6. updating to a newer version:</ins>
- 
+
   ```bash
   $ docker compose pull
   $ docker compose run -it --remove-orphans withings-sync
@@ -192,7 +212,7 @@ A tool for synchronisation of the Withings API to:
   <summary>Expand to show installation steps.</summary>
 
   <ins>1. create the following file/directory structure:</ins>
- 
+
   > Make sure to create the directories (`mkdir`) & files (`touch`) upfront or docker will create them as root.
   ```bash
   .                                          # STACK_PATH
@@ -203,7 +223,7 @@ A tool for synchronisation of the Withings API to:
   ```
 
   <ins>2. contents of an example `.env` file:</ins>
- 
+
   ```bash
   TZ=Europe/Kyiv
   STACK_PATH=/home/youruser/withings-sync
@@ -212,15 +232,15 @@ A tool for synchronisation of the Withings API to:
   ```
 
   <ins>3. contents of an example `entrypoint.sh` file (updated for --config-folder):</ins>
- 
+
   ```bash
   #!/bin/sh
   echo "$(( $RANDOM % 59 +0 )) */3 * * * * * poetry run withings-sync --config-folder /config --features BLOOD_PRESSURE" > /home/withings-sync/cronjob
   supercronic -debug -passthrough-logs /home/withings-sync/cronjob
   ```
- 
+
   <ins>4. contents of an example `docker-compose.yml` file (simplified with --config-folder):</ins>
- 
+
   ```yaml
   services:
   withings-sync:
@@ -243,7 +263,7 @@ A tool for synchronisation of the Withings API to:
   **Note**: Using `--config-folder` simplifies the setup by storing both Withings and Garmin session files in the `/config` directory, eliminating the need for multiple volume mounts.
 
   <ins>5. obtaining Withings authorization:</ins>
- 
+
   ```bash
   $ docker compose pull
   [+] Pulling 13/13
@@ -325,7 +345,7 @@ A tool for synchronisation of the Withings API to:
   ```
 
   <ins>8. updating to a newer version:</ins>
- 
+
   ```bash
   $ docker compose pull
   $ docker compose down
@@ -525,11 +545,11 @@ kubectl create secret generic withings-secret --from-literal=GARMIN_USERNAME=$GA
 kubectl apply -f k8s-pvc.yaml
 ```
 
-3. Run the bootstrap pod, which attaches to the PVC for storing credentials. 
+3. Run the bootstrap pod, which attaches to the PVC for storing credentials.
 ```
 kubectl apply -f k8s-bootstrap.yaml
 ```
-The bootstrap pod stays on indefinitely to allow time for you to exec in, and 
+The bootstrap pod stays on indefinitely to allow time for you to exec in, and
 generate the credentials.
 
 4. Exec into the bootstrap pod, generate credentials and store them in the PVC.
@@ -545,7 +565,7 @@ mkdir -p /data/config
 poetry run withings-sync --config-folder /data/config --fromdate=<RECORDED_DATE>
 ```
 It is important that this run includes a date that has a record, as a record is required for the program to attempt an upload to garmin in order to create the session files for garmin.
-The command above will allow entering the withings token and the MFA code for garmin. 
+The command above will allow entering the withings token and the MFA code for garmin.
 After successful auth, the credentials will be automatically stored in `/data/config/`:
 - `/data/config/.withings_user.json`
 - `/data/config/.garmin_session`
@@ -557,8 +577,8 @@ kubectl apply -f k8s-job.yaml
 
 Note: Update your k8s-job.yaml to include `--config-folder /data/config` in the container command.
 
-## 5 For advanced users - registering own Withings application
-> Instead of using the provided Withings application tokens you can register your own app with Withings and use that one instead. 
+## 5. For advanced users - registering own Withings application
+> Instead of using the provided Withings application tokens you can register your own app with Withings and use that one instead.
 <details>
   <summary>If you are not sure you need this, you most likely won't.</summary>
 
@@ -608,13 +628,13 @@ You can then add the app-config in `withings-sync/withings_app.json`
 
 ## 6. Release
 
-Release works via the GitHub [Draft a new Release](https://github.com/jaroslawhartman/withings-sync/releases/new) 
+Release works via the GitHub [Draft a new Release](https://github.com/jaroslawhartman/withings-sync/releases/new)
 function.
 The `version` key in `pyproject.toml` will be bumped automatically (Version will be written to pyproject.toml file).
 
 ### Docker Image
 
-Container images are created automagically by GitHub Action and published 
+Container images are created automagically by GitHub Action and published
 to [ghcr](https://github.com/jaroslawhartman/withings-sync/pkgs/container/withings-sync).
 
 ### Pypi & GitHub
@@ -631,4 +651,4 @@ The python packages are added to the GitHub releases by a GitHub Action.
 ## 8. Credits / Authors
 
 * Based on [withings-garmin](https://github.com/ikasamah/withings-garmin) by Masayuki Hamasaki, improved to support SSO authorization in Garmin Connect 2.
-* Based on [withings-garmin-v2](https://github.com/jaroslawhartman/withings-garmin-v2) by Jarek Hartman, improved Python 3 compatability, code-style and setuptools packaging, Kubernetes and Docker support. 
+* Based on [withings-garmin-v2](https://github.com/jaroslawhartman/withings-garmin-v2) by Jarek Hartman, improved Python 3 compatability, code-style and setuptools packaging, Kubernetes and Docker support.
