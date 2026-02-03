@@ -16,16 +16,10 @@ jobs:
       run: |
         VERSION=${GITHUB_REF#refs/tags/}
         sed -i "s/version = \"1.0.0.dev1\"/version = \"$VERSION\"/" pyproject.toml
-    - name: Set up Python 3.12 🐍
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-    - name: Install and configure Poetry 📜
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: false
+    - name: Install uv 📦
+      uses: astral-sh/setup-uv@v4
     - name: Build & Package project 👷
-      run: poetry build
+      run: uv build
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4
       with:
