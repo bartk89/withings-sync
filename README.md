@@ -409,6 +409,62 @@ Fit file uploaded to Garmin Connect
 **Note**: Using `--config-folder /config` stores both Withings and Garmin session files in the mounted directory, making them persist across container restarts.
 </details>
 
+### 1.5 Running withings-sync with GitHub Actions
+> This method runs withings-sync on a schedule using GitHub Actions. It requires a one-time local run to obtain Withings OAuth tokens, which are then stored as GitHub Secrets.
+<details>
+  <summary>Expand to show setup steps.</summary>
+
+  <ins>1. Prerequisites — obtain tokens locally:</ins>
+
+  Run withings-sync locally once to complete the OAuth flow:
+  ```bash
+  $ withings-sync
+  ```
+  After successful authentication, your tokens are saved in `~/.withings_user.json`.
+
+  <ins>2. Read tokens from the user config file:</ins>
+
+  ```bash
+  $ cat ~/.withings_user.json
+  {
+      "access_token": "a075d65...",
+      "refresh_token": "b183e03...",
+      "userid": "1234567"
+  }
+  ```
+
+  <ins>3. Create GitHub Secrets:</ins>
+
+  In your repository, go to **Settings > Secrets and variables > Actions** and create these secrets:
+
+  | Secret | Source |
+  |--------|--------|
+  | `WITHINGS_ACCESS_TOKEN` | `access_token` from `.withings_user.json` |
+  | `WITHINGS_REFRESH_TOKEN` | `refresh_token` from `.withings_user.json` |
+  | `WITHINGS_USERID` | `userid` from `.withings_user.json` |
+  | `GARMIN_USERNAME` | Your Garmin Connect email |
+  | `GARMIN_PASSWORD` | Your Garmin Connect password |
+  | `REPO_PAT` (optional) | GitHub PAT with `repo` scope — for automatic token refresh |
+
+  <ins>4. Enable the workflow:</ins>
+
+  The repository includes `.github/workflows/withings-sync.yml` which runs every 3 hours.
+  You can also trigger it manually via the **Actions** tab using `workflow_dispatch`.
+
+  <ins>5. Token refresh:</ins>
+
+  Withings access tokens expire periodically. The workflow automatically refreshes them on each run.
+
+  - **With `REPO_PAT` secret:** Refreshed tokens are written back to GitHub Secrets automatically.
+  - **Without `REPO_PAT`:** You will need to manually update `WITHINGS_ACCESS_TOKEN` and `WITHINGS_REFRESH_TOKEN` when they expire (typically after several months).
+
+  <ins>6. Troubleshooting:</ins>
+
+  - **`WithingsException: app config is missing`** — Ensure `uv sync --frozen` ran successfully; the bundled `withings_app.json` must be accessible.
+  - **`Failed to refresh access token`** — Your refresh token has expired. Re-run the initial OAuth flow locally and update the GitHub Secrets.
+  - **Garmin SSO 401/403 errors** — The workflow runs every 3 hours to avoid Garmin rate limits. Do not increase the frequency.
+</details>
+
 ## 2. Usage Instructions
 
 ```
@@ -455,6 +511,9 @@ You can use the following environment variables for providing the Garmin and/or 
 - `GARMIN_PASSWORD`
 - `TRAINERROAD_USERNAME`
 - `TRAINERROAD_PASSWORD`
+- `WITHINGS_ACCESS_TOKEN`
+- `WITHINGS_REFRESH_TOKEN`
+- `WITHINGS_USERID`
 
 The CLI also uses python-dotenv to populate the variables above. Therefore setting the environment variables
 has the same effect as placing the variables in a `.env` file in the working directory.
@@ -467,6 +526,9 @@ You can also populate the following 'secrets' files to provide the Garmin and/or
 - `/run/secrets/garmin_password`
 - `/run/secrets/trainerroad_username`
 - `/run/secrets/trainerroad_password`
+- `/run/secrets/withings_access_token`
+- `/run/secrets/withings_refresh_token`
+- `/run/secrets/withings_userid`
 
 Secrets are useful in an orchestrated container context — see the [Docker Swarm](https://docs.docker.com/engine/swarm/secrets/) or [Rancher](https://rancher.com/docs/rancher/v1.6/en/cattle/secrets/) docs for more information on how to securely inject secrets into a container.
 

@@ -23,6 +23,25 @@ APP_CONFIG = os.environ.get(
 USER_CONFIG = os.environ.get("WITHINGS_USER", HOME + "/.withings_user.json")
 
 
+def _load_withings_env(env_var, secrets_file):
+    """Load a Withings variable from environment or secrets file."""
+    try:
+        with open(secrets_file, encoding="utf-8") as secret:
+            value = secret.read().strip("\n")
+    except OSError:
+        value = ""
+    return os.getenv(env_var, value) or None
+
+
+WITHINGS_ACCESS_TOKEN = _load_withings_env(
+    "WITHINGS_ACCESS_TOKEN", "/run/secrets/withings_access_token"
+)
+WITHINGS_REFRESH_TOKEN = _load_withings_env(
+    "WITHINGS_REFRESH_TOKEN", "/run/secrets/withings_refresh_token"
+)
+WITHINGS_USERID = _load_withings_env("WITHINGS_USERID", "/run/secrets/withings_userid")
+
+
 class WithingsException(Exception):
     """Pass WithingsExceptions"""
 
@@ -94,6 +113,24 @@ class WithingsOAuth2:
                     f"If you want to use existing credentials, copy from: {legacy_path}"
                 )
 
+        # Check if tokens were provided via environment variables
+        env_access = WITHINGS_ACCESS_TOKEN
+        env_refresh = WITHINGS_REFRESH_TOKEN
+        env_userid = WITHINGS_USERID
+
+        if env_access and env_refresh and env_userid:
+            log.info("Using Withings tokens from environment variables")
+            self.user_config["access_token"] = env_access
+            self.user_config["refresh_token"] = env_refresh
+            self.user_config["userid"] = env_userid
+        elif any([env_access, env_refresh, env_userid]):
+            log.warning(
+                "Partial Withings token environment variables detected. "
+                "All three must be set: WITHINGS_ACCESS_TOKEN, "
+                "WITHINGS_REFRESH_TOKEN, WITHINGS_USERID. "
+                "Falling back to interactive authentication."
+            )
+
         if not self.user_config.get("access_token"):
             if not self.user_config.get("authentification_code"):
                 self.user_config["authentification_code"] = (
@@ -118,6 +155,14 @@ class WithingsOAuth2:
 
     def get_authenticationcode(self):
         """get Withings authentication code"""
+        if not self.app_config.get("client_id"):
+            raise WithingsException(
+                "Withings app config is missing or invalid (no client_id found). "
+                "Ensure the package is installed correctly, or set "
+                "WITHINGS_ACCESS_TOKEN, WITHINGS_REFRESH_TOKEN, and WITHINGS_USERID "
+                "environment variables to bypass interactive authentication."
+            )
+
         params = {
             "response_type": "code",
             "client_id": self.app_config["client_id"],
@@ -188,6 +233,13 @@ class WithingsOAuth2:
 
     def refresh_accesstoken(self):
         """refresh Withings access token"""
+        if not self.app_config.get("client_id"):
+            raise WithingsException(
+                "Cannot refresh access token: app config is missing client_id. "
+                "Ensure the package is installed correctly with bundled config, "
+                "or set WITHINGS_APP to point to a valid withings_app.json."
+            )
+
         log.info("Refresh Access Token")
 
         params = {
@@ -215,10 +267,28 @@ class WithingsOAuth2:
                 "If it's regarding an invalid code, try to start the"
                 " script again to obtain a new link."
             )
+            raise WithingsException(
+                f"Failed to refresh access token (status={status}). "
+                "Your refresh token may have expired. "
+                "Re-run the initial OAuth flow locally to obtain new tokens."
+            )
 
         self.user_config["access_token"] = body.get("access_token")
         self.user_config["refresh_token"] = body.get("refresh_token")
         self.user_config["userid"] = body.get("userid")
+
+    def export_tokens(self):
+        """Export current tokens for CI persistence."""
+        access = self.user_config.get("access_token")
+        refresh = self.user_config.get("refresh_token")
+        userid = self.user_config.get("userid")
+        if access and refresh and userid:
+            return {
+                "access_token": access,
+                "refresh_token": refresh,
+                "userid": str(userid),
+            }
+        return None
 
 
 class WithingsAccount:

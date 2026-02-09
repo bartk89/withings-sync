@@ -1,0 +1,45 @@
+---
+name: Withings Sync
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync Withings to Garmin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run Withings Sync
+        env:
+          WITHINGS_ACCESS_TOKEN: ${{ secrets.WITHINGS_ACCESS_TOKEN }}
+          WITHINGS_REFRESH_TOKEN: ${{ secrets.WITHINGS_REFRESH_TOKEN }}
+          WITHINGS_USERID: ${{ secrets.WITHINGS_USERID }}
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: uv run withings-sync --verbose
+
+      # Optional: persist refreshed tokens back to secrets
+      # Requires REPO_PAT secret (GitHub PAT with 'repo' scope)
+      - name: Update refreshed tokens
+        if: always() && env.GH_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          if [ -f "$HOME/.withings_user.json" ]; then
+            jq -r '.access_token // empty' "$HOME/.withings_user.json" | gh secret set WITHINGS_ACCESS_TOKEN
+            jq -r '.refresh_token // empty' "$HOME/.withings_user.json" | gh secret set WITHINGS_REFRESH_TOKEN
+          fi
